@@ -55,6 +55,8 @@
     "@loopback/rest": "^9.1.1",
     "@loopback/rest-explorer": "^3.0.5",
     "@loopback/service-proxy": "^3.0.5",
+    "cloudinary": "^1.26.3",
+    "loopback-connector-rest": "^3.7.0",
     "tslib": "^2.0.0"
   },
   "devDependencies": {

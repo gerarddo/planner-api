@@ -90,6 +90,48 @@ export class ExpenseController {
     return this.expenseRepository.find(filter);
   }
 
+
+  @get('/expenses/latest', {
+    responses: {
+      '200': {
+        description: 'Array of Expense model instances from latest day registered',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'string'
+            },
+          },
+        },
+      },
+    },
+  })
+  async findLatest(
+    @param.filter(Expense) filter?: Filter<Expense>,
+  ): Promise<Expense[]> {
+
+
+    filter = {
+      "order": ["ymd DESC"],
+      "limit": 1,
+      "fields": ["ymd"]
+    }
+
+    let latest;
+
+    await this.expenseRepository.find(filter).then((records: Expense[]) => {
+      latest = records[0]['ymd']
+    });
+    filter = {
+      "where": {
+        "ymd": {
+          'eq': latest
+        }
+      }
+    }
+
+    return this.expenseRepository.find(filter)
+  }
+
   @get('/expenses-unassigned', {
     responses: {
       '200': {
