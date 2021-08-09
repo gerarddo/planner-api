@@ -91,7 +91,53 @@ export class ExpenseController {
   }
 
 
+
   @get('/expenses/latest', {
+    responses: {
+      '200': {
+        description: 'Array of Expense model instances from latest day registered',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'array',
+              items: getModelSchemaRef(Expense, {includeRelations: true}),
+            }
+          },
+        },
+      },
+    },
+  })
+  /**
+   * Function might take more time to be processed than others since it runs two
+   * independent queries to the database.
+   */
+  async findLatest(
+    @param.filter(Expense) filter?: Filter<Expense>,
+  ): Promise<Expense[]> {
+
+    filter = {
+      "order": ["ymd DESC"],
+      "limit": 1,
+      "fields": ["ymd"]
+    }
+
+    return this.expenseRepository.find(filter).then((records: Expense[]) => {
+
+      filter = {
+        "where": {
+          "ymd": {
+            'eq': records[0]['ymd']
+          }
+        }
+      }
+
+      return this.expenseRepository.find(filter)
+
+    });
+
+  }
+
+  @get('/expenses/latest/date', {
     responses: {
       '200': {
         description: 'Array of Expense model instances from latest day registered',
@@ -105,9 +151,9 @@ export class ExpenseController {
       },
     },
   })
-  async findLatest(
+  async findLatestDate(
     @param.filter(Expense) filter?: Filter<Expense>,
-  ): Promise<Expense[]> {
+  ): Promise<Date> {
 
 
     filter = {
@@ -116,20 +162,10 @@ export class ExpenseController {
       "fields": ["ymd"]
     }
 
-    let latest;
-
-    await this.expenseRepository.find(filter).then((records: Expense[]) => {
-      latest = records[0]['ymd']
+    return this.expenseRepository.find(filter).then((records: Expense[]) => {
+      return records[0]['ymd']
     });
-    filter = {
-      "where": {
-        "ymd": {
-          'eq': latest
-        }
-      }
-    }
 
-    return this.expenseRepository.find(filter)
   }
 
   @get('/expenses-unassigned', {
