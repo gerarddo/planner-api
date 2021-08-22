@@ -122,7 +122,8 @@ export class EntryController {
       }
     }
 
-    return this.entryRepository.find(filter)
+
+    return this.entryRepository.find(filter).then((data: any) => {console.log(data); return data;});
   }
 
   @patch('/entries', {

@@ -76,15 +76,48 @@ export class ExpenseController {
     },
   })
   async find(
-    @param.query.boolean('flat') flat: boolean = false,
+    @param.query.number('year') year?: number,
+    @param.query.number('month') month?: MonthOptions,
     @param.filter(Expense) filter?: Filter<Expense>,
   ): Promise<Expense[]> {
 
+    let today = new Date()
 
-    if (flat) {
-      filter = {}
-    } else {
-      filter = {"include": [{"relation": "entry"}]}
+    let months = [
+      '01',
+      '02',
+      '03',
+      '04',
+      '05',
+      '06',
+      '07',
+      '08',
+      '09',
+      '10',
+      '11',
+      '12',
+    ]
+
+    let sMonth = months[today.getMonth()]
+    let sYear = today.getFullYear().toString()
+
+    if (month !== undefined) {
+      sMonth = months[month]
+    }
+
+    if (year !== undefined) {
+      sYear = year.toString()
+    }
+
+    filter = {
+      'order': ['ymd DESC'],
+      "include": [{"relation": "entry"}],
+      'where': {
+        'and': [
+          {'ymd': {'gt': new Date(sYear + '-' + sMonth + '-01T00:00:00.000Z')}},
+          {'ymd': {'lt': new Date(sYear + '-' + sMonth + '-31T00:00:00.000Z')}}
+        ]
+      }
     }
 
     return this.expenseRepository.find(filter);
@@ -128,7 +161,8 @@ export class ExpenseController {
           "ymd": {
             'eq': records[0]['ymd']
           }
-        }
+        },
+        "include": [{"relation": "entry"}]
       }
 
       return this.expenseRepository.find(filter)
@@ -184,8 +218,8 @@ export class ExpenseController {
     },
   })
   async findUnassigned(
-    @param.query.number('month') month?: MonthOptions,
     @param.query.number('year') year?: number,
+    @param.query.number('month') month?: MonthOptions,
     @param.filter(Expense) filter?: Filter<Expense>,
   ): Promise<Expense[]> {
 
@@ -220,6 +254,7 @@ export class ExpenseController {
     }
 
     filter = {
+      "include": [{"relation": "entry"}],
       'order': ['ymd DESC'],
       'where': {
         'and': [
@@ -231,7 +266,6 @@ export class ExpenseController {
 
     return this.expenseRepository.find(filter).then((expenses: Expense[]) => {
       let unassigned: Expense[] = []
-      console.log(expenses)
       expenses.forEach((el) => {
         if (el.entryId == undefined) {
           unassigned.push(el)
@@ -319,8 +353,6 @@ export class ExpenseController {
     @param.path.string('id') id: string,
     @requestBody() expense: Expense,
   ): Promise<void> {
-    console.log('puttt')
-
     await this.expenseRepository.replaceById(id, expense);
   }
 
