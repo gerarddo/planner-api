@@ -337,8 +337,6 @@ export class ExpenseController {
     })
     expense: Expense,
   ): Promise<void> {
-    console.log('patchh')
-    console.log(expense)
     await this.expenseRepository.updateById(id, expense);
   }
 
@@ -354,6 +352,28 @@ export class ExpenseController {
     @requestBody() expense: Expense,
   ): Promise<void> {
     await this.expenseRepository.replaceById(id, expense);
+  }
+
+  @put('/expenses/{id}/reset-link', {
+    responses: {
+      '204': {
+        description: 'Expense entryId reset success',
+      },
+    },
+  })
+  async resetLinkById(
+    @param.path.string('id') id: string
+  ): Promise<void> {
+    await this.expenseRepository.findById(id).then((expense: Expense) => {
+      let reset = new Expense();
+      reset.ymd = expense.ymd
+      reset.description = expense.description
+      reset.tags = expense.tags
+      reset.method = expense.method
+      reset.inflow = expense.inflow
+      reset.outflow = expense.outflow
+      this.expenseRepository.replaceById(id, reset)
+    });
   }
 
   @del('/expenses/{id}', {

@@ -1,3 +1,4 @@
+import {inject} from '@loopback/core';
 import {
   Count,
   CountSchema,
@@ -10,20 +11,32 @@ import {
   get,
   getModelSchemaRef,
   getWhereSchemaFor,
+  HttpErrors,
   param,
   patch,
   post,
-  requestBody
+  requestBody,
+  RestBindings
 } from '@loopback/rest';
+import {Response} from 'express';
+import * as fs from 'fs';
+import path from 'path';
 import {
   Entry,
   Expense
 } from '../models';
 import {EntryRepository} from '../repositories';
+import {JsonToCsvService} from '../services';
+
+// const readdir = promisify(fs.readdir);
+
+const SANDBOX = path.resolve(__dirname, '../../data');
+
 
 export class EntryExpenseController {
   constructor(
     @repository(EntryRepository) protected entryRepository: EntryRepository,
+    @inject('services.JsonToCsvService') private jsonToCsvService: JsonToCsvService,
   ) { }
 
   @get('/entries/{id}/expenses', {
@@ -45,6 +58,38 @@ export class EntryExpenseController {
     filter = {"include": [{"relation": "entry"}]}
     return this.entryRepository.expenses(id).find(filter);
   }
+
+
+
+  @get('/expenses/download-data', {
+    responses: {
+      '200': {
+        description: 'Sends CSV file with expenses records.',
+        content: {
+          'text/csv': {},
+        },
+      },
+    },
+  })
+  async downloadCsv(
+    @inject(RestBindings.Http.RESPONSE) response: Response,
+  ): Promise<Response> {
+    const filePath = this.jsonToCsvService.expenses()
+    const fileName = this.jsonToCsvService.expensesFileName
+    const file = path.resolve(filePath);
+
+    if (!file.startsWith(this.jsonToCsvService.csvBoxPath)) {
+      throw new HttpErrors.BadRequest(`Invalid file name: ${fileName}`);
+    }
+
+    let rs = fs.createReadStream(filePath);
+    response.attachment(fileName);
+    rs.pipe(response);
+
+    return response;
+  }
+
+
 
   @post('/entries/{id}/expenses', {
     responses: {
@@ -111,3 +156,4 @@ export class EntryExpenseController {
     return this.entryRepository.expenses(id).delete(where);
   }
 }
+

@@ -76,8 +76,8 @@ export class EntryController {
     },
   })
   async find(
-    @param.query.number('month') month?: MonthOptions,
     @param.query.number('year') year?: number,
+    @param.query.number('month') month?: MonthOptions,
     @param.filter(Entry) filter?: Filter<Entry>,
   ): Promise<Entry[]> {
 
@@ -109,8 +109,6 @@ export class EntryController {
       sYear = year.toString()
     }
 
-
-
     filter = {
       "include": [{"relation": "expenses"}],
       'order': ['ymd DESC'],
@@ -122,8 +120,7 @@ export class EntryController {
       }
     }
 
-
-    return this.entryRepository.find(filter).then((data: any) => {console.log(data); return data;});
+    return this.entryRepository.find(filter);
   }
 
   @patch('/entries', {
