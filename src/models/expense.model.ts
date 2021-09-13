@@ -30,11 +30,8 @@ export class Expense extends Entity {
   })
   description: string;
 
-  @property({
-    type: 'string',
-    required: true,
-  })
-  tags: string;
+  @property.array(String)
+  tags: string[];
 
   @property({
     type: 'string',

@@ -74,19 +74,26 @@ export class EntryExpenseController {
   async downloadCsv(
     @inject(RestBindings.Http.RESPONSE) response: Response,
   ): Promise<Response> {
-    const filePath = this.jsonToCsvService.expenses()
-    const fileName = this.jsonToCsvService.expensesFileName
-    const file = path.resolve(filePath);
 
-    if (!file.startsWith(this.jsonToCsvService.csvBoxPath)) {
-      throw new HttpErrors.BadRequest(`Invalid file name: ${fileName}`);
-    }
+    await this.jsonToCsvService.expenses().then((filePath: string | null) => {
+      if (filePath !== null) {
 
-    let rs = fs.createReadStream(filePath);
-    response.attachment(fileName);
-    rs.pipe(response);
+        const fileName = this.jsonToCsvService.expensesFileName
+        const file = path.resolve(filePath);
+
+        if (!file.startsWith(this.jsonToCsvService.csvBoxPath)) {
+          throw new HttpErrors.BadRequest(`Invalid file name: ${fileName}`);
+        }
+
+        let rs = fs.createReadStream(filePath);
+        response.attachment(fileName);
+        rs.pipe(response);
+
+      }
+    })
 
     return response;
+
   }
 
 

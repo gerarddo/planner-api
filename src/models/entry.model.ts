@@ -30,11 +30,8 @@ export class Entry extends Entity {
   })
   description: string;
 
-  @property({
-    type: 'string',
-    required: true,
-  })
-  tags: string;
+  @property.array(String)
+  tags: string[];
 
   @property({
     type: 'string',
@@ -50,6 +47,7 @@ export class Entry extends Entity {
 
   @hasMany(() => Expense)
   expenses: Expense[];
+
   @property({
     type: 'number',
     required: true,

@@ -1,3 +1,4 @@
+import {inject} from '@loopback/core';
 import {
   Count,
   CountSchema,
@@ -8,18 +9,23 @@ import {
 } from '@loopback/repository';
 import {
   del, get,
-  getModelSchemaRef, param, patch, post, put, requestBody
+  getModelSchemaRef, HttpErrors, param, patch, post, put, requestBody, RestBindings
 } from '@loopback/rest';
+import {Response} from 'express';
+import * as fs from 'fs';
+import path from 'path';
 import {Expense} from '../models';
 import {ExpenseRepository} from '../repositories';
+import {JsonToCsvService} from '../services';
+
 
 type MonthOptions = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 
 export class ExpenseController {
   constructor(
-    @repository(ExpenseRepository)
-    public expenseRepository: ExpenseRepository,
+    @repository(ExpenseRepository) public expenseRepository: ExpenseRepository,
+    @inject('services.JsonToCsvService') private jsonToCsvService: JsonToCsvService,
   ) { }
 
   @post('/expenses', {
@@ -44,6 +50,40 @@ export class ExpenseController {
     expense: Omit<Expense, 'id'>,
   ): Promise<Expense> {
     return this.expenseRepository.create(expense);
+  }
+
+  @post('/expenses/multiple', {
+    responses: {
+      '200': {
+        description: 'Expense model instance',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'array',
+              items: getModelSchemaRef(Expense, {includeRelations: true}),
+            },
+          },
+        },
+      },
+    },
+  })
+  async createAll(
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: {
+            type: 'array',
+            items: getModelSchemaRef(Expense, {
+              title: 'NewExpense',
+              exclude: ['id'],
+            })
+          }
+        },
+      },
+    })
+    expenses: Omit<Expense, 'id'>[],
+  ): Promise<Expense[]> {
+    return this.expenseRepository.createAll(expenses);
   }
 
   @get('/expenses/count', {
@@ -120,7 +160,9 @@ export class ExpenseController {
       }
     }
 
-    return this.expenseRepository.find(filter);
+    return this.expenseRepository.find(filter).then((data) => {
+      return data
+    });
   }
 
 
@@ -386,4 +428,41 @@ export class ExpenseController {
   async deleteById(@param.path.string('id') id: string): Promise<void> {
     await this.expenseRepository.deleteById(id);
   }
+
+
+  @get('/expenses/download-csv', {
+    responses: {
+      '200': {
+        description: 'Sends CSV file with expenses records.',
+        content: {
+          'text/csv': {},
+        },
+      },
+    },
+  })
+  async downloadCsv(
+    @inject(RestBindings.Http.RESPONSE) response: Response,
+  ): Promise<Response> {
+
+    await this.jsonToCsvService.expenses().then((filePath: string | null) => {
+      if (filePath !== null) {
+
+        const fileName = this.jsonToCsvService.expensesFileName
+        const file = path.resolve(filePath);
+
+        if (!file.startsWith(this.jsonToCsvService.csvBoxPath)) {
+          throw new HttpErrors.BadRequest(`Invalid file name: ${fileName}`);
+        }
+
+        let rs = fs.createReadStream(filePath);
+        response.attachment(fileName);
+        rs.pipe(response);
+
+      }
+    })
+
+    return response;
+
+  }
+
 }

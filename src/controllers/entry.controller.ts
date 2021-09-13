@@ -1,3 +1,4 @@
+import {inject} from '@loopback/core';
 import {
   Count,
   CountSchema,
@@ -8,18 +9,22 @@ import {
 } from '@loopback/repository';
 import {
   del, get,
-  getModelSchemaRef, param, patch, post, put, requestBody
+  getModelSchemaRef, HttpErrors, param, patch, post, put, requestBody, RestBindings
 } from '@loopback/rest';
+import {Response} from 'express';
+import * as fs from 'fs';
+import path from 'path';
 import {Entry} from '../models';
 import {EntryRepository} from '../repositories';
+import {JsonToCsvService} from '../services';
 
 type MonthOptions = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 
 export class EntryController {
   constructor(
-    @repository(EntryRepository)
-    public entryRepository: EntryRepository,
+    @repository(EntryRepository) public entryRepository: EntryRepository,
+    @inject('services.JsonToCsvService') private jsonToCsvService: JsonToCsvService
   ) { }
 
   @post('/entries', {
@@ -44,6 +49,40 @@ export class EntryController {
     entry: Omit<Entry, 'id'>,
   ): Promise<Entry> {
     return this.entryRepository.create(entry);
+  }
+
+  @post('/entries/multiple', {
+    responses: {
+      '200': {
+        description: 'Entry model instance',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'array',
+              items: getModelSchemaRef(Entry, {includeRelations: true}),
+            },
+          },
+        },
+      },
+    },
+  })
+  async createAll(
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: {
+            type: 'array',
+            items: getModelSchemaRef(Entry, {
+              title: 'NewEntry',
+              exclude: ['id'],
+            })
+          }
+        },
+      },
+    })
+    entries: Omit<Entry, 'id'>[],
+  ): Promise<Entry[]> {
+    return this.entryRepository.createAll(entries);
   }
 
   @get('/entries/count', {
@@ -205,6 +244,33 @@ export class EntryController {
     await this.entryRepository.replaceById(id, entry);
   }
 
+
+  @patch('/entries/{id}/tags', {
+    responses: {
+      '204': {
+        description: 'Entry PATCH success',
+      },
+    },
+  })
+  async updateTagsById(
+    @param.path.string('id') id: string,
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: {
+            type: 'array',
+            items: {
+              type: 'string'
+            },
+          },
+        },
+      }
+    }) tags: string[],
+  ): Promise<void> {
+    await this.entryRepository.updateById(id, {tags: tags});
+  }
+
+
   @del('/entries/{id}', {
     responses: {
       '204': {
@@ -215,4 +281,41 @@ export class EntryController {
   async deleteById(@param.path.string('id') id: string): Promise<void> {
     await this.entryRepository.deleteById(id);
   }
+
+  @get('/entries/download-data', {
+    responses: {
+      '200': {
+        description: 'Sends CSV file with entries records.',
+        content: {
+          'text/csv': {},
+        },
+      },
+    },
+  })
+  async downloadCsv(
+    @inject(RestBindings.Http.RESPONSE) response: Response,
+  ): Promise<Response> {
+
+    await this.jsonToCsvService.entries().then((filePath: string | null) => {
+      if (filePath !== null) {
+
+        const fileName = this.jsonToCsvService.entriesFileName
+        const file = path.resolve(filePath);
+
+        if (!file.startsWith(this.jsonToCsvService.csvBoxPath)) {
+          throw new HttpErrors.BadRequest(`Invalid file name: ${fileName}`);
+        }
+
+        let rs = fs.createReadStream(filePath);
+        response.attachment(fileName);
+        rs.pipe(response);
+
+      }
+    })
+
+    return response;
+
+  }
+
+
 }
