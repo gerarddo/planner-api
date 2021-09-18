@@ -396,6 +396,31 @@ export class ExpenseController {
     await this.expenseRepository.replaceById(id, expense);
   }
 
+  @patch('/expenses/{id}/tags', {
+    responses: {
+      '204': {
+        description: 'Expense PATCH success',
+      },
+    },
+  })
+  async updateTagsById(
+    @param.path.string('id') id: string,
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: {
+            type: 'array',
+            items: {
+              type: 'string'
+            },
+          },
+        },
+      }
+    }) tags: string[],
+  ): Promise<void> {
+    await this.expenseRepository.updateById(id, {tags: tags});
+  }
+
   @put('/expenses/{id}/reset-link', {
     responses: {
       '204': {
