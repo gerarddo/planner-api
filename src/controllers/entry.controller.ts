@@ -14,9 +14,9 @@ import {
 import {Response} from 'express';
 import * as fs from 'fs';
 import path from 'path';
-import {Entry} from '../models';
+import {Entry, Expense} from '../models';
 import {EntryRepository} from '../repositories';
-import {JsonToCsvService} from '../services';
+import {EntryLinkSuggestionsService, JsonToCsvService} from '../services';
 
 type MonthOptions = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
@@ -24,7 +24,8 @@ type MonthOptions = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 export class EntryController {
   constructor(
     @repository(EntryRepository) public entryRepository: EntryRepository,
-    @inject('services.JsonToCsvService') private jsonToCsvService: JsonToCsvService
+    @inject('services.JsonToCsvService') private jsonToCsvService: JsonToCsvService,
+    @inject('services.EntryLinkSuggestionsService') private entryLinkSuggestionsService: EntryLinkSuggestionsService,
   ) { }
 
   @post('/entries', {
@@ -207,6 +208,30 @@ export class EntryController {
       filter = {"include": [{"relation": "expenses"}]}
     }
     return this.entryRepository.findById(id, filter);
+  }
+
+  @get('/entries/{id}/link-suggestions', {
+    responses: {
+      '200': {
+        description: 'Expense model array instance',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'array',
+              items: {
+                schema: getModelSchemaRef(Expense, {includeRelations: true}),
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+  async findSuggestionsById(
+    @param.path.string('id') id: string
+  ): Promise<Expense[]> {
+
+    return []
   }
 
   @patch('/entries/{id}', {
