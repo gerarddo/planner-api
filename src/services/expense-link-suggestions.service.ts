@@ -1,4 +1,5 @@
 import { /* inject, */ BindingScope, injectable} from '@loopback/core';
+import {Entry} from '../models';
 
 @injectable({scope: BindingScope.TRANSIENT})
 export class ExpenseLinkSuggestionsService {
@@ -7,8 +8,8 @@ export class ExpenseLinkSuggestionsService {
   /*
    * Add service methods here
    */
-  // async getSuggestionsById(id: string): Promise<Entry[]> {
-  //   let suggestions: Entry[] = []
-  //   return suggestions
-  // }
+  async getSuggestionsById(id: string): Promise<Entry[]> {
+    let suggestions: Entry[] = []
+    return suggestions
+  }
 }

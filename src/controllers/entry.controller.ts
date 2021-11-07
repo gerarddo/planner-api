@@ -100,6 +100,71 @@ export class EntryController {
     return this.entryRepository.count(where);
   }
 
+  @get('/entries/page', {
+    responses: {
+      '200': {
+        description: 'Page where record(s) are logalized by a given date',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'number',
+            },
+          },
+        },
+      },
+    },
+  })
+  async currentPage(
+    @param.query.number('fetchYear') fetchYear?: number,
+    @param.query.number('fetchMonth') fetchMonth?: MonthOptions,
+    @param.query.number('queryYear') queryYear?: number,
+    @param.query.number('queryMonth') queryMonth?: number,
+    @param.query.number('queryDay') queryDay?: number,
+  ): Promise<{currentPage: number}> {
+
+    let today = new Date()
+
+    let months = [
+      '01',
+      '02',
+      '03',
+      '04',
+      '05',
+      '06',
+      '07',
+      '08',
+      '09',
+      '10',
+      '11',
+      '12',
+    ]
+
+    let sMonth = months[today.getMonth()]
+    let sYear = today.getFullYear().toString()
+
+    if (fetchMonth !== undefined) {
+      sMonth = months[fetchMonth]
+    }
+
+    if (fetchYear !== undefined) {
+      sYear = fetchYear.toString()
+    }
+
+
+    const filter = {
+      'order': ['ymd DESC'],
+      'where': {
+        'and': [
+          {'ymd': {'gt': new Date(sYear + '-' + sMonth + '-01T00:00:00.000Z')}},
+          {'ymd': {'lt': new Date(sYear + '-' + sMonth + '-31T00:00:00.000Z')}}
+        ]
+      }
+    }
+
+    const allEntries = await this.entryRepository.find(filter);
+    return {currentPage: 3}
+  }
+
   @get('/entries', {
     responses: {
       '200': {
@@ -218,9 +283,7 @@ export class EntryController {
           'application/json': {
             schema: {
               type: 'array',
-              items: {
-                schema: getModelSchemaRef(Expense, {includeRelations: true}),
-              },
+              items: getModelSchemaRef(Expense, {includeRelations: true}),
             },
           },
         },
